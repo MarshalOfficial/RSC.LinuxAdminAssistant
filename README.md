@@ -20,3 +20,5 @@ bash* date
 bash* ls  
 bash* supervisorctl status all  
 * if you send a zip file to the group, bot will search in a target folder that you set before in appsettings.json, and if find a folder with that name, will make a backup from that folder then unzip and replace zip file to the folder for you.  
+
+* WARNING: if your are running the bot as administrator or root, be careful what you send to call on your server 😉.
