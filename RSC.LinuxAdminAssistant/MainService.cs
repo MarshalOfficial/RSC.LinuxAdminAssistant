@@ -53,7 +53,12 @@ namespace RSC.LinuxAdminAssistant
             {
                 var bashCommand = txtMessage.Split('*')[1];
                 Process proc = new();
-                proc.StartInfo.FileName = "/bin/bash";
+
+                if (Environment.OSVersion.Platform == PlatformID.Unix)
+                    proc.StartInfo.FileName = "/bin/bash";
+                else
+                    proc.StartInfo.FileName = "cmd.exe";
+
                 proc.StartInfo.Arguments = "-c \" " + bashCommand + " \"";
                 proc.StartInfo.UseShellExecute = false;
                 proc.StartInfo.RedirectStandardOutput = true;
