@@ -2,7 +2,7 @@
 
 A Telegram bot that will act as an remote assistant on your server, you can run bash commands remotely on your server via this bot, also send your applications file updates to the bot and it will get a backup from target folder then unzip and replace new update for you.
 
-requirements:  
+Step by step guide:  
 * create a new bot via TelegramBotFather and get your bot API key  
 * create a Telegram group and add your bot as admin to the group  
 * get a publish from the project and install it on your server(Linux/Windows)  
