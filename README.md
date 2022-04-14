@@ -15,7 +15,7 @@ Windows: double click on RSC.RSC.LinuxAdminAssistant.exe
 * in my case to make the bot run in 7*24 I used supervisor application in linux:  
 https://www.digitalocean.com/community/tutorials/how-to-install-and-manage-supervisor-on-ubuntu-and-debian-vps  
 * now you can talk to bot in telegram group, to execute bash command, you must use this format:  
-bash*YOURCOMMAND  
+bash + * + YOURCOMMAND  
 bash*date  
 bash*ls  
 * if you send a zip file to the group, bot will search in a target folder that you set before in appsettings.json, and if find a folder with that name, will make a backup from that folder then unzip and replace zip file to the folder for you.  
