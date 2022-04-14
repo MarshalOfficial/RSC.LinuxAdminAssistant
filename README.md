@@ -18,4 +18,5 @@ https://www.digitalocean.com/community/tutorials/how-to-install-and-manage-super
 bash + * + YOURCOMMAND  
 bash* date  
 bash* ls  
+bash* supervisorctl status all  
 * if you send a zip file to the group, bot will search in a target folder that you set before in appsettings.json, and if find a folder with that name, will make a backup from that folder then unzip and replace zip file to the folder for you.  
