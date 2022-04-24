@@ -95,60 +95,73 @@ namespace RSC.LinuxAdminAssistant
 
         private async Task ProcessCommand(Update update)
         {
-            var txtMessage = update.Message.Text;
-            if (txtMessage.ToLower().StartsWith("bash*"))
+            try
             {
-                var bashCommand = txtMessage.Split('*')[1];
-                Process proc = new();
-
-                if (Environment.OSVersion.Platform == PlatformID.Unix)
-                    proc.StartInfo.FileName = "/bin/bash";
-                else
-                    proc.StartInfo.FileName = "cmd.exe";
-
-                proc.StartInfo.Arguments = "-c \" " + bashCommand + " \"";
-                proc.StartInfo.UseShellExecute = false;
-                proc.StartInfo.RedirectStandardOutput = true;
-                proc.Start();
-                proc.WaitForExit();
-
-                var result = proc.StandardOutput.ReadToEnd();
-                await botClient.SendTextMessageAsync(adminGroupId,
-                    InfoPerfix +
-                    "Bash command:" +
-                    Environment.NewLine +
-                    bashCommand +
-                    Environment.NewLine +
-                    "Result:" +
-                    Environment.NewLine +
-                    result);
-                return;
-            }
-            if (txtMessage.ToLower().StartsWith("download*"))
-            {
-                var filePath = txtMessage.Split('*')[1];
-                if (!System.IO.File.Exists(filePath))
+                var txtMessage = update.Message.Text;
+                if (txtMessage.ToLower().StartsWith("bash*"))
                 {
+                    var bashCommand = txtMessage.Split('*')[1];
+                    Process proc = new();
+
+                    if (Environment.OSVersion.Platform == PlatformID.Unix)
+                        proc.StartInfo.FileName = "/bin/bash";
+                    else
+                        proc.StartInfo.FileName = "cmd.exe";
+
+                    proc.StartInfo.Arguments = "-c \" " + bashCommand + " \"";
+                    proc.StartInfo.UseShellExecute = false;
+                    proc.StartInfo.RedirectStandardOutput = true;
+                    proc.Start();
+                    proc.WaitForExit();
+
+                    var result = proc.StandardOutput.ReadToEnd();
                     await botClient.SendTextMessageAsync(adminGroupId,
-                    InfoPerfix +
-                    "download command:" +
-                    Environment.NewLine +
-                    txtMessage +
-                    Environment.NewLine +
-                    "Result:" +
-                    Environment.NewLine +
-                    ErrorPerfix + "File not exists!!!");
+                        InfoPerfix +
+                        "Bash command:" +
+                        Environment.NewLine +
+                        bashCommand +
+                        Environment.NewLine +
+                        "Result:" +
+                        Environment.NewLine +
+                        result);
+                    return;
                 }
-                else
+                if (txtMessage.ToLower().StartsWith("download*"))
                 {
-                    using (FileStream stream = System.IO.File.OpenRead(filePath))
+                    var filePath = txtMessage.Split('*')[1];
+                    if (!System.IO.File.Exists(filePath))
                     {
-                        InputOnlineFile inputOnlineFile = new(stream, Path.GetFileName(filePath));
-                        await botClient.SendDocumentAsync(adminGroupId, inputOnlineFile);
+                        await botClient.SendTextMessageAsync(adminGroupId,
+                        InfoPerfix +
+                        "download command:" +
+                        Environment.NewLine +
+                        txtMessage +
+                        Environment.NewLine +
+                        "Result:" +
+                        Environment.NewLine +
+                        ErrorPerfix + "File not exists!!!");
                     }
+                    else
+                    {
+                        using (FileStream stream = System.IO.File.OpenRead(filePath))
+                        {
+                            InputOnlineFile inputOnlineFile = new(stream, Path.GetFileName(filePath));
+                            await botClient.SendDocumentAsync(adminGroupId, inputOnlineFile);
+                        }
+                    }
+                    return;
                 }
-                return;
-            }           
+            }
+            catch (Exception e)
+            {
+                var msg = ErrorPerfix +
+                    "ErrorOccurred: " +
+                    Environment.NewLine +
+                    e.ToString();
+
+                Console.WriteLine(msg);
+                await botClient.SendTextMessageAsync(adminGroupId, msg);
+            }
         }
 
         private async Task ProcessFile(Update update)
