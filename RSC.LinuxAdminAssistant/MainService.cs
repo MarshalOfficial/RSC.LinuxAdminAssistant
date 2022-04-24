@@ -186,6 +186,8 @@ namespace RSC.LinuxAdminAssistant
 
             //backup process
             var backupPath = Path.Combine(backupFolderPath, fileName.Split('.')[0] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmm"));
+            if (!Directory.Exists(backupPath))
+                Directory.CreateDirectory(backupPath);
             foreach (string dirPath in Directory.GetDirectories(dir, "*", SearchOption.AllDirectories))
             {
                 Directory.CreateDirectory(dirPath.Replace(dir, backupPath));
