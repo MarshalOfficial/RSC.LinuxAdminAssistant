@@ -24,4 +24,10 @@ bash* supervisorctl status all
 * sending a file with this caption: upload*{path} 
 for example: upload*/etc/nginx/nginx.conf will upload the file to the target path for you. (If the file doesn't exist it will create it there, otherwise, the bot will create a backup from the file by appending DateTime to the end of the file name and then replacing it for you)
 
+* Docker   
+** to run the project via docker, you need to build the image then run it, so inside the project folder run these below commands:   
+1- docker build -t rsc-linux-assistant .   
+2- docker run -d -e BotApiKey='YourBotApiKey' -e ProxyEnable='false' -e ProxyIP='127.0.0.1' -e ProxyPort='9050' -e AdminGroupId='YourTelegramGroupChatId' -e ServerBaseFolder='/home/X' -e ServerBackupFolder='/home/X/backups'  --name test-assistant rsc-linux-assistant   
+(note that you must pass all the configuration values that are inside appsettings.json as docker run environment variables)   
+
 * WARNING: if your are running the bot as administrator or root, be careful what you send to call on your server 😉.
