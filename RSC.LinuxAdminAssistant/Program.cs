@@ -14,7 +14,11 @@ IConfiguration config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
-var proxy = new HttpToSocks5Proxy(config.GetValue<string>("ProxyIP"), config.GetValue<int>("ProxyPort"));
+var configHelper = new ConfigurationHelper.ConfigurationHelper(config);
+
+var adminGroupId = configHelper.GetValue("AdminGroupId");
+
+var proxy = new HttpToSocks5Proxy(configHelper.GetValue("ProxyIP"), int.Parse(configHelper.GetValue("ProxyPort")));
 
 proxy.ResolveHostnamesLocally = true;
 
@@ -22,10 +26,10 @@ var httpClient = new HttpClient(
     new HttpClientHandler { Proxy = proxy, UseProxy = true }
 );
 
-var isProxyEnable = config.GetValue<bool>("ProxyEnable");
-var botClient = new TelegramBotClient(config.GetValue<string>("BotApiKey"), isProxyEnable ? httpClient : null);
+var isProxyEnable = bool.Parse(configHelper.GetValue("ProxyEnable"));
+var botClient = new TelegramBotClient(configHelper.GetValue("BotApiKey"), isProxyEnable ? httpClient : null);
 
-var mainService = new MainService(botClient, config);
+var mainService = new MainService(botClient, configHelper);
 
 using var cts = new CancellationTokenSource();
 
@@ -67,7 +71,7 @@ async Task Handle(Update update)
         if (update.Message == null || 
             update.Message.From == null || 
             update.Message.From.IsBot || 
-            update.Message.Chat.Id.ToString() != config.GetValue<string>("AdminGroupId") || 
+            update.Message.Chat.Id.ToString() != adminGroupId || 
             update.Type != UpdateType.Message)
             return;
 
@@ -80,7 +84,7 @@ async Task Handle(Update update)
     catch (Exception ex)
     {
         Console.WriteLine(ex.Message);
-        await botClient.SendTextMessageAsync(config.GetValue<string>("AdminGroupId"), "🛑 " + ex.ToString());
+        await botClient.SendTextMessageAsync(adminGroupId, "🛑 " + ex.ToString());
     }
 }
 

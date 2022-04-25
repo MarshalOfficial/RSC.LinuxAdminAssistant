@@ -14,18 +14,18 @@ namespace RSC.LinuxAdminAssistant
         private const string SuccessPerfix = "✅ ";
 
         private readonly TelegramBotClient botClient;
-        private readonly IConfiguration config;
+        private readonly ConfigurationHelper.ConfigurationHelper config;
         private long adminGroupId;
         private string baseFolderPath;
         private string backupFolderPath;
 
-        public MainService(TelegramBotClient BotClient, IConfiguration Config)
+        public MainService(TelegramBotClient BotClient, ConfigurationHelper.ConfigurationHelper Config)
         {                        
             botClient = BotClient;
             config = Config;
-            adminGroupId = long.Parse(config.GetValue<string>("AdminGroupId"));
-            baseFolderPath = config.GetValue<string>("ServerBaseFolder");
-            backupFolderPath = config.GetValue<string>("ServerBackupFolder");
+            adminGroupId = long.Parse(config.GetValue("AdminGroupId"));
+            baseFolderPath = config.GetValue("ServerBaseFolder");
+            backupFolderPath = config.GetValue("ServerBackupFolder");
             
             if(!Directory.Exists(backupFolderPath))
             {
