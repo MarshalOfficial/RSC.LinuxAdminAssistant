@@ -1,9 +1,8 @@
-﻿using Microsoft.Extensions.Configuration;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InputFiles;
+
 
 namespace RSC.LinuxAdminAssistant
 {
@@ -57,11 +56,11 @@ namespace RSC.LinuxAdminAssistant
                         {
                             var fileName = update.Message.Document.FileName;
 
-                            await botClient.SendTextMessageAsync(adminGroupId, InfoPerfix + $"File: '{fileName}' received.");
+                            await botClient.SendMessage(adminGroupId, InfoPerfix + $"File: '{fileName}' received.");
 
                             var filePath = update.Message.Caption.Split('*')[1];
 
-                            var file = await botClient.GetFileAsync(update.Message.Document.FileId);
+                            var file = await botClient.GetFile(update.Message.Document.FileId);
 
                             if (System.IO.File.Exists(filePath))
                             {
@@ -71,10 +70,10 @@ namespace RSC.LinuxAdminAssistant
                             
                             using (var stream = new FileStream(filePath, FileMode.Create))
                             {
-                                await botClient.DownloadFileAsync(file.FilePath, stream);
+                                await botClient.DownloadFile(file.FilePath, stream);
                             }
                             
-                            await botClient.SendTextMessageAsync(adminGroupId, SuccessPerfix + $"File: '{fileName}' successfully updated.");
+                            await botClient.SendMessage(adminGroupId, SuccessPerfix + $"File: '{fileName}' successfully updated.");
                             
                             return;
                         }
@@ -89,7 +88,7 @@ namespace RSC.LinuxAdminAssistant
                     e.ToString();
 
                 Console.WriteLine(msg);
-                await botClient.SendTextMessageAsync(adminGroupId, msg);
+                await botClient.SendMessage(adminGroupId, msg);
             }
         }
 
@@ -115,7 +114,7 @@ namespace RSC.LinuxAdminAssistant
                     proc.WaitForExit();
 
                     var result = proc.StandardOutput.ReadToEnd();
-                    await botClient.SendTextMessageAsync(adminGroupId,
+                    await botClient.SendMessage(adminGroupId,
                         InfoPerfix +
                         "Bash command:" +
                         Environment.NewLine +
@@ -131,7 +130,7 @@ namespace RSC.LinuxAdminAssistant
                     var filePath = txtMessage.Split('*')[1];
                     if (!System.IO.File.Exists(filePath))
                     {
-                        await botClient.SendTextMessageAsync(adminGroupId,
+                        await botClient.SendMessage(adminGroupId,
                         InfoPerfix +
                         "download command:" +
                         Environment.NewLine +
@@ -143,11 +142,9 @@ namespace RSC.LinuxAdminAssistant
                     }
                     else
                     {
-                        using (FileStream stream = System.IO.File.OpenRead(filePath))
-                        {
-                            InputOnlineFile inputOnlineFile = new(stream, Path.GetFileName(filePath));
-                            await botClient.SendDocumentAsync(adminGroupId, inputOnlineFile);
-                        }
+                        using FileStream stream = System.IO.File.OpenRead(filePath);
+                        InputFile inputOnlineFile = InputFile.FromStream(stream, Path.GetFileName(filePath));
+                        await botClient.SendDocument(adminGroupId, inputOnlineFile);
                     }
                     return;
                 }
@@ -160,7 +157,7 @@ namespace RSC.LinuxAdminAssistant
                     e.ToString();
 
                 Console.WriteLine(msg);
-                await botClient.SendTextMessageAsync(adminGroupId, msg);
+                await botClient.SendMessage(adminGroupId, msg);
             }
         }
 
@@ -168,19 +165,19 @@ namespace RSC.LinuxAdminAssistant
         {
             if (!update.Message.Document.MimeType.ToLower().Contains("zip"))
             {
-                await botClient.SendTextMessageAsync(adminGroupId, ErrorPerfix + "File type error! zip files are only acceptable.");
+                await botClient.SendMessage(adminGroupId, ErrorPerfix + "File type error! zip files are only acceptable.");
                 return;
             }
 
             var fileName = update.Message.Document.FileName;
 
-            await botClient.SendTextMessageAsync(adminGroupId, InfoPerfix + $"File: '{fileName}' received.");
+            await botClient.SendMessage(adminGroupId, InfoPerfix + $"File: '{fileName}' received.");
 
             var dir = Path.Combine(baseFolderPath, fileName.Split('.')[0]);
             
             if (!Directory.Exists(dir))
             {
-                await botClient.SendTextMessageAsync(adminGroupId, ErrorPerfix + "File name is invalid! zip file name must be equivalent to target folder name on the server.");
+                await botClient.SendMessage(adminGroupId, ErrorPerfix + "File name is invalid! zip file name must be equivalent to target folder name on the server.");
                 return;
             }
 
@@ -198,20 +195,20 @@ namespace RSC.LinuxAdminAssistant
             }
 
 
-            var file = await botClient.GetFileAsync(update.Message.Document.FileId);
+            var file = await botClient.GetFile(update.Message.Document.FileId);
             
             var zipPath = Path.Combine(dir, fileName);
 
             using (var stream = new FileStream(zipPath, FileMode.Create))
             {
-                await botClient.DownloadFileAsync(file.FilePath, stream);                
+                await botClient.DownloadFile(file.FilePath, stream);                
             }
 
             System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, dir, true);
             
             System.IO.File.Delete(zipPath);
 
-            await botClient.SendTextMessageAsync(adminGroupId, SuccessPerfix + $"File: '{fileName}' successfully download, unzip, replaced to the target folder.");
+            await botClient.SendMessage(adminGroupId, SuccessPerfix + $"File: '{fileName}' successfully download, unzip, replaced to the target folder.");
 
         }
 

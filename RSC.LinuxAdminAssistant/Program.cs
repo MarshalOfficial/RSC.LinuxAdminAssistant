@@ -45,7 +45,7 @@ botClient.StartReceiving(
     cancellationToken: cts.Token);
 
 
-var me = await botClient.GetMeAsync();
+var me = await botClient.GetMe();
 Console.WriteLine($"Start listening for @{me.Username}");
 Console.ReadLine();
 
@@ -84,7 +84,7 @@ async Task Handle(Update update)
     catch (Exception ex)
     {
         Console.WriteLine(ex.Message);
-        await botClient.SendTextMessageAsync(adminGroupId, "🛑 " + ex.ToString());
+        await botClient.SendMessage(adminGroupId, "🛑 " + ex.ToString());
     }
 }
 
