@@ -1,33 +1,98 @@
 # RSC.LinuxAdminAssistant
 
-A Telegram bot that will act as an remote assistant on your server, you can run bash commands remotely on your server via this bot, also send your applications file updates to the bot and it will get a backup from target folder then unzip and replace new update for you.
+> A powerful, interactive remote server assistant via a Telegram bot. Run secure bash/cmd commands, deploy application updates, and manage your server's filesystem effortlessly—all from Telegram.
 
-Step by step guide:  
-* create a new bot via TelegramBotFather and get your bot API key  
-* create a Telegram group and add your bot as admin to the group  
-* get a publish from the project and install it on your server(Linux/Windows)  
-https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-publish  
-* make sure that you installed dotnet 6 runtime on your server  
-* copy publish folder on your server  
-* run the project   
-Linux: dotnet RSC.RSC.LinuxAdminAssistant.dll  
-Windows: double click on RSC.RSC.LinuxAdminAssistant.exe  
-* in my case to make the bot run in 7*24 I used supervisor application in linux:  
-https://www.digitalocean.com/community/tutorials/how-to-install-and-manage-supervisor-on-ubuntu-and-debian-vps  
-* now you can talk to bot in telegram group, to execute bash command, you must use this format:  
-bash + * + YOURCOMMAND  
-bash* date  
-bash* ls  
-bash* supervisorctl status all  
-* if you send a zip file to the group, bot will search in a target folder that you set before in appsettings.json, and if find a folder with that name, will make a backup from that folder then unzip and replace zip file to the folder for you.  
-* download*{path} for example: download*/etc/nginx/nginx.conf will download the target file for you into current chat
-* sending a file with this caption: upload*{path} 
-for example: upload*/etc/nginx/nginx.conf will upload the file to the target path for you. (If the file doesn't exist it will create it there, otherwise, the bot will create a backup from the file by appending DateTime to the end of the file name and then replacing it for you)
+`RSC.LinuxAdminAssistant` is a lightweight .NET application designed to give you continuous control over your VPS or local server (supports both Linux and Windows). It enables you to execute shell commands interactively, upload new application builds, automatically back up current deployments before overwriting, and securely download log files or configuration documents directly to your Telegram chat. 
 
-* Docker   
-** to run the project via docker, you need to build the image then run it, so inside the project folder run these below commands:   
-1- docker build -t rsc-linux-assistant .   
-2- docker run -d -e BotApiKey='YourBotApiKey' -e ProxyEnable='false' -e ProxyIP='127.0.0.1' -e ProxyPort='9050' -e AdminGroupId='YourTelegramGroupChatId' -e ServerBaseFolder='/home/X' -e ServerBackupFolder='/home/X/backups'  --name test-assistant rsc-linux-assistant   
-(note that you must pass all the configuration values that are inside appsettings.json as docker run environment variables)   
+## Features
 
-* WARNING: if your are running the bot as administrator or root, be careful what you send to call on your server 😉.
+- **Interactive Command Execution**: Run shell commands remotely. Unlike simple bots, this app streams standard output (`stdout`) and standard error (`stderr`) back to Telegram continuously, keeping you updated in real-time for long-running processes (e.g., `ping`, `top`).
+- **Cross-Platform Support**: Effortlessly processes system commands using `/bin/bash` on Unix environments and `cmd.exe` on Windows.
+- **Task Cancellation (`bash*kill`)**: Easily terminate long-running or hanging scripts securely without crashing the bot natively.
+- **Smart Deployments**: Upload a ZIP file to your bot's group chat along with the target destination, and the bot will cleanly back up the old configuration, decompress the ZIP, and inject the new build automatically.
+- **File Management**: `download*` and `upload*` files remotely from absolute server filepaths with automated `.bak` rotations to ensure nothing is lost during an overwrite.
+- **Container Ready**: A fully dockerized setup allows dropping this bot into any architecture within seconds.
+
+---
+
+## Getting Started
+
+### 1. Telegram Bot Setup
+1. Message [@BotFather](https://t.me/BotFather) on Telegram and create a new bot to get your **Bot API Key**.
+2. Create a private Telegram group and add your bot.
+3. Find your **Admin Group ID** (Chat ID) so the bot knows to only accept commands from that specific secured group.
+
+### 2. Standard Installation (Bare Metal)
+
+**Prerequisites**: [install .NET Runtime](https://dotnet.microsoft.com/download) on your server.
+
+1. Clone and publish the repository for your environment:
+   ```bash
+   dotnet publish -c Release -o ./publish
+   ```
+2. Copy the `publish` directory onto your server.
+3. Configure your properties in `appsettings.json`.
+4. Run the application:
+   - **Linux**: `dotnet RSC.LinuxAdminAssistant.dll`
+   - **Windows**: `RSC.LinuxAdminAssistant.exe`
+
+*(Tip: On Linux, we recommend using [Supervisor](https://www.digitalocean.com/community/tutorials/how-to-install-and-manage-supervisor-on-ubuntu-and-debian-vps) or a systemd service to keep the bot running 24/7).*
+
+### 3. Docker Installation
+
+For an isolated launch, you only need to run the pre-configured Docker image, passing all configuration parameters as environment variables.
+
+```bash
+docker build -t rsc-linux-assistant .
+
+docker run -d \
+  -e BotApiKey='YourBotApiKey' \
+  -e ProxyEnable='false' \
+  -e ProxyIP='127.0.0.1' \
+  -e ProxyPort='9050' \
+  -e AdminGroupId='YourTelegramGroupChatId' \
+  -e ServerBaseFolder='/home/X' \
+  -e ServerBackupFolder='/home/X/backups' \
+  --name linux-assistant \
+  rsc-linux-assistant
+```
+
+---
+
+## Usage Guide
+
+Send messages directly inside your secure Telegram group to control your server:
+
+**Run a Shell Command:**
+```text
+bash* YOUR_COMMAND
+```
+*Examples:*  
+`bash* date`  
+`bash* ls -la`  
+`bash* supervisorctl status all`  
+
+**Stop a Hanging Command:**
+```text
+bash*kill
+```
+*(Stops the currently running process if it gets trapped in an infinite loop)*  
+
+**Download a Target File:**
+```text
+download* /absolute/path/to/file.conf
+```
+
+**Upload a Target File:**
+Attach a document in Telegram (e.g. `nginx.conf`) and put the path as the file **caption**:
+```text
+upload* /etc/nginx/nginx.conf
+```
+*(If the destination file already exists, a timestamped copy will automatically be recorded.)*
+
+**Automated App Updating via ZIP:**
+Just send a `.zip` document to the group! Ensure the ZIP file name matches exactly to a sub-folder within your `ServerBaseFolder` set in your `appsettings.json`. The bot will back up the current deployment and extract the new content over it. 
+
+---
+
+> **⚠️ Security Warning:** This bot acts natively as the user executing the host application. If run under `root` or `Administrator`, the bot holds full control of your infrastructure. Use responsibly.
