@@ -53,7 +53,8 @@ ExecStart=/usr/bin/dotnet /path/to/your/publish/folder/RSC.LinuxAdminAssistant.d
 Restart=always
 RestartSec=10
 SyslogIdentifier=linux-admin-bot
-User=root # (Warning: Root gives bot full admin power over OS)
+# (Warning: Root gives bot full admin power over OS)
+User=root
 
 [Install]
 WantedBy=multi-user.target
