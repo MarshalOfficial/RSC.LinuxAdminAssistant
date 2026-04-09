@@ -243,15 +243,43 @@ namespace RSC.LinuxAdminAssistant
                         using (var response = await httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead))
                         {
                             response.EnsureSuccessStatusCode();
-                            using (var stream = await response.Content.ReadAsStreamAsync())
-                            using (var fileStream = new FileStream(localTempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                            var contentType = response.Content.Headers.ContentType?.MediaType;
+
+                            if (contentType != null && contentType.Contains("text/html") && Environment.OSVersion.Platform == PlatformID.Unix)
                             {
-                                await stream.CopyToAsync(fileStream);
+                                await botClient.EditMessageText(chatId: adminGroupId, messageId: msg.MessageId, text: InfoPerfix + $"HTML Webpage detected. Cloning site assets via wget...");
+                                
+                                var tempWebDir = Path.Combine(baseFolderPath, "webdl_" + Guid.NewGuid().ToString("N"));
+                                Directory.CreateDirectory(tempWebDir);
+
+                                var wgetProcess = new Process();
+                                wgetProcess.StartInfo.FileName = "wget";
+                                wgetProcess.StartInfo.Arguments = $"--execute=\"robots=off\" --page-requisites --convert-links --adjust-extension --no-parent -P \"{tempWebDir}\" \"{url}\"";
+                                wgetProcess.StartInfo.UseShellExecute = false;
+                                wgetProcess.StartInfo.CreateNoWindow = true;
+                                wgetProcess.Start();
+                                await wgetProcess.WaitForExitAsync();
+
+                                var zipPath = localTempFilePath + ".zip";
+                                System.IO.Compression.ZipFile.CreateFromDirectory(tempWebDir, zipPath);
+                                
+                                await botClient.EditMessageText(chatId: adminGroupId, messageId: msg.MessageId, text: InfoPerfix + $"Webpage cloned and zipped. Now sending to Telegram group...");
+                                await SendFileInChunksAsync(zipPath, txtMessage);
+                                
+                                try { System.IO.File.Delete(zipPath); } catch {}
+                                try { Directory.Delete(tempWebDir, true); } catch {}
+                            }
+                            else
+                            {
+                                using (var stream = await response.Content.ReadAsStreamAsync())
+                                using (var fileStream = new FileStream(localTempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                                {
+                                    await stream.CopyToAsync(fileStream);
+                                }
+                                await botClient.EditMessageText(chatId: adminGroupId, messageId: msg.MessageId, text: InfoPerfix + $"Saved locally as {localTempFilePath}. Now sending to Telegram group...");
+                                await SendFileInChunksAsync(localTempFilePath, txtMessage);
                             }
                         }
-
-                        await botClient.EditMessageText(chatId: adminGroupId, messageId: msg.MessageId, text: InfoPerfix + $"Saved locally as {localTempFilePath}. Now sending to Telegram group...");
-                        await SendFileInChunksAsync(localTempFilePath, txtMessage);
                     }
                     catch (Exception ex)
                     {

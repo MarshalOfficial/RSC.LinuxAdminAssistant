@@ -107,10 +107,12 @@ bash*kill
 ```
 *(Stops the currently running process if it gets trapped in an infinite loop)*  
 
-**Fetch a File from the Internet:**
-Downloads a remote file directly to the server, and then automatically uploads it to the Telegram chat.
+**Fetch a File or Webpage from the Internet:**
+Downloads a remote file directly to the server, and then automatically uploads it to the Telegram chat. 
+*(If you are running the bot on **Linux** and provide the link to an HTML webpage instead of a direct file, the bot will intelligently use `wget` to clone the entire website (HTML, CSS, and Images), compress it into a `.zip` archive, and send it to your chat!)*
 ```text
 fetch* https://example.com/database.sql
+fetch* https://example.com/
 ```
 
 **Download a Target File:**
