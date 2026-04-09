@@ -107,10 +107,17 @@ bash*kill
 ```
 *(Stops the currently running process if it gets trapped in an infinite loop)*  
 
+**Fetch a File from the Internet:**
+Downloads a remote file directly to the server, and then automatically uploads it to the Telegram chat.
+```text
+fetch* https://example.com/database.sql
+```
+
 **Download a Target File:**
 ```text
 download* /absolute/path/to/file.conf
 ```
+*(Note: For both `fetch*` and `download*`, if the file is over Telegram's 50MB bot upload limit, the bot will automatically split it into 49MB chunks (e.g. `.part1`, `.part2`) and send each chunk sequentially to bypass the limit).*
 
 **Upload a Target File:**
 Attach a document in Telegram (e.g. `nginx.conf`) and put the path as the file **caption**:

@@ -18,6 +18,7 @@ namespace RSC.LinuxAdminAssistant
         private string baseFolderPath;
         private string backupFolderPath;
         private Process? activeProcess;
+        private static readonly HttpClient httpClient = new HttpClient();
 
         public MainService(TelegramBotClient BotClient, ConfigurationHelper.ConfigurationHelper Config)
         {                        
@@ -222,9 +223,39 @@ namespace RSC.LinuxAdminAssistant
                     }
                     else
                     {
-                        using FileStream stream = System.IO.File.OpenRead(filePath);
-                        InputFile inputOnlineFile = InputFile.FromStream(stream, Path.GetFileName(filePath));
-                        await botClient.SendDocument(adminGroupId, inputOnlineFile);
+                        await SendFileInChunksAsync(filePath, txtMessage);
+                    }
+                    return;
+                }
+
+                if (txtMessage.ToLower().StartsWith("fetch*"))
+                {
+                    var url = txtMessage.Substring(txtMessage.IndexOf('*') + 1).Trim();
+                    try
+                    {
+                        var uri = new Uri(url);
+                        var fileName = Path.GetFileName(uri.LocalPath);
+                        if (string.IsNullOrWhiteSpace(fileName)) fileName = "downloaded_file";
+                        var localTempFilePath = Path.Combine(baseFolderPath, fileName);
+
+                        var msg = await botClient.SendMessage(adminGroupId, InfoPerfix + $"Starting fetch from {url}...");
+
+                        using (var response = await httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead))
+                        {
+                            response.EnsureSuccessStatusCode();
+                            using (var stream = await response.Content.ReadAsStreamAsync())
+                            using (var fileStream = new FileStream(localTempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                            {
+                                await stream.CopyToAsync(fileStream);
+                            }
+                        }
+
+                        await botClient.EditMessageText(chatId: adminGroupId, messageId: msg.MessageId, text: InfoPerfix + $"Saved locally as {localTempFilePath}. Now sending to Telegram group...");
+                        await SendFileInChunksAsync(localTempFilePath, txtMessage);
+                    }
+                    catch (Exception ex)
+                    {
+                        await botClient.SendMessage(adminGroupId, ErrorPerfix + "Fetch Failed:\n" + ex.Message);
                     }
                     return;
                 }
@@ -300,6 +331,50 @@ namespace RSC.LinuxAdminAssistant
                 }
             }
 
+        }
+
+        private async Task SendFileInChunksAsync(string filePath, string commandText)
+        {
+            long maxFileSize = 49L * 1024 * 1024; // 49 MB limit for bots
+            var fi = new FileInfo(filePath);
+
+            if (fi.Length <= maxFileSize)
+            {
+                using FileStream stream = System.IO.File.OpenRead(filePath);
+                InputFile inputOnlineFile = InputFile.FromStream(stream, Path.GetFileName(filePath));
+                await botClient.SendDocument(adminGroupId, inputOnlineFile);
+                return;
+            }
+
+            await botClient.SendMessage(adminGroupId, InfoPerfix + $"File ({(fi.Length / 1024 / 1024)}MB) exceeds Telegram's 50MB limit. Splitting into 49MB chunks...");
+
+            int totalParts = (int)Math.Ceiling((double)fi.Length / maxFileSize);
+            using FileStream fs = System.IO.File.OpenRead(filePath);
+            byte[] buffer = new byte[81920];
+            
+            for (int i = 1; i <= totalParts; i++)
+            {
+                string partFileName = Path.GetFileName(filePath) + $".part{i}";
+                string partPath = filePath + $".part{i}";
+                
+                using (FileStream partStream = new FileStream(partPath, FileMode.Create))
+                {
+                    long currentPartSize = 0;
+                    int bytesRead;
+                    while (currentPartSize < maxFileSize && (bytesRead = await fs.ReadAsync(buffer, 0, (int)Math.Min(buffer.Length, maxFileSize - currentPartSize))) > 0)
+                    {
+                        await partStream.WriteAsync(buffer, 0, bytesRead);
+                        currentPartSize += bytesRead;
+                    }
+                }
+
+                using FileStream readPartStream = System.IO.File.OpenRead(partPath);
+                InputFile partFile = InputFile.FromStream(readPartStream, partFileName);
+                await botClient.SendDocument(adminGroupId, partFile, caption: $"Part {i} of {totalParts}");
+                
+                readPartStream.Close();
+                try { System.IO.File.Delete(partPath); } catch { }
+            }
         }
 
     }
