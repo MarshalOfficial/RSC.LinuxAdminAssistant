@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -17,6 +17,7 @@ namespace RSC.LinuxAdminAssistant
         private long adminGroupId;
         private string baseFolderPath;
         private string backupFolderPath;
+        private Process? activeProcess;
 
         public MainService(TelegramBotClient BotClient, ConfigurationHelper.ConfigurationHelper Config)
         {                        
@@ -58,7 +59,7 @@ namespace RSC.LinuxAdminAssistant
 
                             await botClient.SendMessage(adminGroupId, InfoPerfix + $"File: '{fileName}' received.");
 
-                            var filePath = update.Message.Caption.Split('*')[1];
+                            var filePath = update.Message.Caption.Substring(update.Message.Caption.IndexOf('*') + 1);
 
                             var file = await botClient.GetFile(update.Message.Document.FileId);
 
@@ -96,48 +97,127 @@ namespace RSC.LinuxAdminAssistant
         {
             try
             {
-                var txtMessage = update.Message.Text;
+                var txtMessage = update.Message.Text ?? "";
+                
+                if (txtMessage.ToLower().Trim() == "bash*kill")
+                {
+                    if (activeProcess != null && !activeProcess.HasExited)
+                    {
+                        activeProcess.Kill();
+                        await botClient.SendMessage(adminGroupId, SuccessPerfix + "Running process killed.");
+                    }
+                    else
+                    {
+                        await botClient.SendMessage(adminGroupId, InfoPerfix + "No running process to kill.");
+                    }
+                    return;
+                }
+
                 if (txtMessage.ToLower().StartsWith("bash*"))
                 {
-                    var bashCommand = txtMessage.Split('*')[1];
-                    Process proc = new();
+                    if (activeProcess != null && !activeProcess.HasExited)
+                    {
+                        await botClient.SendMessage(adminGroupId, ErrorPerfix + "A process is already running. Wait for it to finish or send 'bash*kill' to terminate it.");
+                        return;
+                    }
+
+                    var bashCommand = txtMessage.Substring(txtMessage.IndexOf('*') + 1);
+
+                    activeProcess = new Process();
 
                     if (Environment.OSVersion.Platform == PlatformID.Unix)
-                        proc.StartInfo.FileName = "/bin/bash";
+                    {
+                        activeProcess.StartInfo.FileName = "/bin/bash";
+                        activeProcess.StartInfo.ArgumentList.Add("-c");
+                        activeProcess.StartInfo.ArgumentList.Add(bashCommand);
+                    }
                     else
-                        proc.StartInfo.FileName = "cmd.exe";
+                    {
+                        activeProcess.StartInfo.FileName = "cmd.exe";
+                        activeProcess.StartInfo.Arguments = "/c " + bashCommand;
+                    }
 
-                    proc.StartInfo.Arguments = "-c \" " + bashCommand + " \"";
-                    proc.StartInfo.UseShellExecute = false;
-                    proc.StartInfo.RedirectStandardOutput = true;
-                    proc.Start();
-                    proc.WaitForExit();
+                    activeProcess.StartInfo.UseShellExecute = false;
+                    activeProcess.StartInfo.RedirectStandardOutput = true;
+                    activeProcess.StartInfo.RedirectStandardError = true;
+                    activeProcess.StartInfo.CreateNoWindow = true;
 
-                    var result = proc.StandardOutput.ReadToEnd();
-                    await botClient.SendMessage(adminGroupId,
-                        InfoPerfix +
-                        "Bash command:" +
-                        Environment.NewLine +
-                        bashCommand +
-                        Environment.NewLine +
-                        "Result:" +
-                        Environment.NewLine +
-                        result);
+                    // Send initial message
+                    var message = await botClient.SendMessage(adminGroupId, InfoPerfix + "Running:\n" + bashCommand + "\n\nResult:\n⏳...");
+
+                    activeProcess.Start();
+
+                    string outputBuffer = "";
+                    object lockObj = new object();
+
+                    activeProcess.OutputDataReceived += (s, e) => {
+                        if (e.Data != null) lock (lockObj) outputBuffer += e.Data + "\n";
+                    };
+                    activeProcess.ErrorDataReceived += (s, e) => {
+                        if (e.Data != null) lock (lockObj) outputBuffer += "ERROR: " + e.Data + "\n";
+                    };
+
+                    activeProcess.BeginOutputReadLine();
+                    activeProcess.BeginErrorReadLine();
+
+                    string lastSentText = "";
+                    while (!activeProcess.HasExited)
+                    {
+                        await Task.Delay(1500); // update every 1.5s
+                        string currentText;
+                        lock (lockObj) { currentText = outputBuffer; }
+                        
+                        if (currentText != lastSentText)
+                        {
+                            var textToSend = currentText;
+                            if (textToSend.Length > 4000)
+                                textToSend = "..." + textToSend.Substring(textToSend.Length - 3990); // keep it within telegram limits
+                                
+                            try
+                            {
+                                await botClient.EditMessageText(
+                                    chatId: adminGroupId,
+                                    messageId: message.MessageId,
+                                    text: InfoPerfix + "Running:\n" + bashCommand + "\n\nResult:\n" + textToSend + "\n⏳...");
+                                lastSentText = currentText;
+                            }
+                            catch { /* Ignore edit limits if happens */ }
+                        }
+                    }
+
+                    activeProcess.WaitForExit();
+                    
+                    // Final update
+                    string finalText;
+                    lock (lockObj) { finalText = outputBuffer; }
+                    
+                    if (string.IsNullOrWhiteSpace(finalText)) finalText = "[No output]";
+                    
+                    if (finalText.Length > 4000)
+                        finalText = "..." + finalText.Substring(finalText.Length - 3990);
+
+                    try
+                    {
+                        await botClient.EditMessageText(
+                            chatId: adminGroupId,
+                            messageId: message.MessageId,
+                            text: InfoPerfix + "Bash command:\n" + bashCommand + "\n\nResult:\n" + finalText);
+                    }
+                    catch { } // Ignore if it's the exact same text
+                    
+                    activeProcess = null;
                     return;
                 }
                 if (txtMessage.ToLower().StartsWith("download*"))
                 {
-                    var filePath = txtMessage.Split('*')[1];
+                    var filePath = txtMessage.Substring(txtMessage.IndexOf('*') + 1);
                     if (!System.IO.File.Exists(filePath))
                     {
                         await botClient.SendMessage(adminGroupId,
                         InfoPerfix +
-                        "download command:" +
-                        Environment.NewLine +
+                        "download command:\n" +
                         txtMessage +
-                        Environment.NewLine +
-                        "Result:" +
-                        Environment.NewLine +
+                        "\nResult:\n" +
                         ErrorPerfix + "File not exists!!!");
                     }
                     else
@@ -152,8 +232,7 @@ namespace RSC.LinuxAdminAssistant
             catch (Exception e)
             {
                 var msg = ErrorPerfix +
-                    "ErrorOccurred: " +
-                    Environment.NewLine +
+                    "ErrorOccurred: \n" +
                     e.ToString();
 
                 Console.WriteLine(msg);
@@ -204,11 +283,22 @@ namespace RSC.LinuxAdminAssistant
                 await botClient.DownloadFile(file.FilePath, stream);                
             }
 
-            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, dir, true);
-            
-            System.IO.File.Delete(zipPath);
-
-            await botClient.SendMessage(adminGroupId, SuccessPerfix + $"File: '{fileName}' successfully download, unzip, replaced to the target folder.");
+            try
+            {
+                System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, dir, true);
+                await botClient.SendMessage(adminGroupId, SuccessPerfix + $"File: '{fileName}' successfully download, unzip, replaced to the target folder.");
+            }
+            catch (Exception ex)
+            {
+                await botClient.SendMessage(adminGroupId, ErrorPerfix + $"Failed to extract '{fileName}': {ex.Message}");
+            }
+            finally
+            {
+                if (System.IO.File.Exists(zipPath))
+                {
+                    System.IO.File.Delete(zipPath);
+                }
+            }
 
         }
 
