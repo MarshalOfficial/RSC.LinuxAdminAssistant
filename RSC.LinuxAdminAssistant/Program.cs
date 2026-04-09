@@ -71,9 +71,14 @@ async Task Handle(Update update)
         if (update.Message == null || 
             update.Message.From == null || 
             update.Message.From.IsBot || 
-            update.Message.Chat.Id.ToString() != adminGroupId || 
             update.Type != UpdateType.Message)
             return;
+
+        if (update.Message.Chat.Id.ToString() != adminGroupId)
+        {
+            Console.WriteLine($"[Diag] Blocked message from actual Chat ID: {update.Message.Chat.Id}. Expected: {adminGroupId}");
+            return;
+        }
 
         if (update.Message!.Type != MessageType.Text && 
             update.Message!.Type != MessageType.Document)
