@@ -22,68 +22,46 @@
 2. Create a private Telegram group and add your bot.
 3. Find your **Admin Group ID** (Chat ID) so the bot knows to only accept commands from that specific secured group.
 
-### 2. Standard Installation (Bare Metal)
+### 2. Standard Installation (Bare-Metal strictly recommended)
 
-**Prerequisites**: [install .NET Runtime](https://dotnet.microsoft.com/download) on your server.
+> [!WARNING]
+> Do **NOT** use Docker to deploy this bot. Docker inherently isolates applications into virtual sandbox containers, meaning `bash*` commands and filesystem actions will only execute inside a temporary void, completely failing to administrate your actual server host. This bot must be installed natively Bare-Metal to manage your actual infrastructure!
+
+**Prerequisites**: [install .NET 10.0 Runtime](https://dotnet.microsoft.com/download) on your server.
 
 1. Clone and publish the repository for your environment:
    ```bash
    dotnet publish -c Release -o ./publish
    ```
-2. Copy the `publish` directory onto your server.
-3. Configure your properties in `appsettings.json`.
-4. Run the application:
-   - **Linux**: `dotnet RSC.LinuxAdminAssistant.dll`
-   - **Windows**: `RSC.LinuxAdminAssistant.exe`
+2. Copy the `publish` directory natively onto your server.
+3. Configure your keys inside `appsettings.json`.
+4. Create a system persistence daemon to run it eternally in the background natively.
 
-*(Tip: On Linux, we recommend using [Supervisor](https://www.digitalocean.com/community/tutorials/how-to-install-and-manage-supervisor-on-ubuntu-and-debian-vps) or a systemd service to keep the bot running 24/7).*
-
-### 3. Docker Installation
-
-For an isolated launch or simple deployment, you can use Docker. Follow these steps to build the image, push it to your Docker Hub for public use, and use Docker Compose to run it anywhere.
-
-#### Step 1: Build and Push to Docker Hub
-To publish the docker image so anyone can pull it, run:
+**Example `systemd` setup (Ubuntu/Debian):**
 ```bash
-# 1. Navigate to the project directory
-cd RSC.LinuxAdminAssistant
+# 1. Create a service file
+sudo nano /etc/systemd/system/linux-admin-bot.service
 
-# 2. Build the image (replace <your-dockerhub-username> with yours)
-docker build -t <your-dockerhub-username>/rsc-linux-assistant:latest .
+# 2. Paste the configuration (adjust paths!):
+[Unit]
+Description=RSC Linux Admin Assistant Bot
+After=network.target
 
-# 3. Log into Docker Desktop or CLI
-docker login
+[Service]
+WorkingDirectory=/path/to/your/publish/folder
+ExecStart=/usr/bin/dotnet /path/to/your/publish/folder/RSC.LinuxAdminAssistant.dll
+Restart=always
+RestartSec=10
+SyslogIdentifier=linux-admin-bot
+User=root # (Warning: Root gives bot full admin power over OS)
 
-# 4. Push the image to Docker Hub
-docker push <your-dockerhub-username>/rsc-linux-assistant:latest
-```
+[Install]
+WantedBy=multi-user.target
 
-#### Step 2: Run via Docker Compose
-Create a `docker-compose.yml` file anywhere on your target server and paste the following configuration:
-
-```yaml
-version: '3.8'
-
-services:
-  linux-admin-assistant:
-    image: <your-dockerhub-username>/rsc-linux-assistant:latest
-    container_name: rsc-linux-assistant
-    restart: unless-stopped
-    environment:
-      - BotApiKey=YOUR-BOT-API-KEY
-      - ProxyEnable=false
-      - ProxyIP=127.0.0.1
-      - ProxyPort=9050
-      - AdminGroupId=YOUR-ADMIN-GROUP-ID
-      - ServerBaseFolder=/server/base/
-      - ServerBackupFolder=/server/base/backups
-    # volumes:
-    #  - /:/host_root:rw # Optional: Mount host root to allow the bot to manage the host system files.
-```
-
-To start the bot, run:
-```bash
-docker-compose up -d
+# 3. Save, activate, and run forever:
+sudo systemctl daemon-reload
+sudo systemctl enable linux-admin-bot.service
+sudo systemctl start linux-admin-bot.service
 ```
 
 ---
