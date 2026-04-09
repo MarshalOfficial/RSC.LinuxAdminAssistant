@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  linux-admin-assistant:
+    image: <your-dockerhub-username>/rsc-linux-assistant:latest
+    container_name: rsc-linux-assistant
+    restart: unless-stopped
+    environment:
+      - BotApiKey=YOUR-BOT-API-KEY
+      - ProxyEnable=false
+      - ProxyIP=127.0.0.1
+      - ProxyPort=9050
+      - AdminGroupId=YOUR-ADMIN-GROUP-ID
+      - ServerBaseFolder=/server/base/
+      - ServerBackupFolder=/server/base/backups
+    # volumes:
+    #  - /:/host_root:rw # Optional: Mount host root to allow the bot to manage the host system files.

@@ -40,21 +40,50 @@
 
 ### 3. Docker Installation
 
-For an isolated launch, you only need to run the pre-configured Docker image, passing all configuration parameters as environment variables.
+For an isolated launch or simple deployment, you can use Docker. Follow these steps to build the image, push it to your Docker Hub for public use, and use Docker Compose to run it anywhere.
 
+#### Step 1: Build and Push to Docker Hub
+To publish the docker image so anyone can pull it, run:
 ```bash
-docker build -t rsc-linux-assistant .
+# 1. Navigate to the project directory
+cd RSC.LinuxAdminAssistant
 
-docker run -d \
-  -e BotApiKey='YourBotApiKey' \
-  -e ProxyEnable='false' \
-  -e ProxyIP='127.0.0.1' \
-  -e ProxyPort='9050' \
-  -e AdminGroupId='YourTelegramGroupChatId' \
-  -e ServerBaseFolder='/home/X' \
-  -e ServerBackupFolder='/home/X/backups' \
-  --name linux-assistant \
-  rsc-linux-assistant
+# 2. Build the image (replace <your-dockerhub-username> with yours)
+docker build -t <your-dockerhub-username>/rsc-linux-assistant:latest .
+
+# 3. Log into Docker Desktop or CLI
+docker login
+
+# 4. Push the image to Docker Hub
+docker push <your-dockerhub-username>/rsc-linux-assistant:latest
+```
+
+#### Step 2: Run via Docker Compose
+Create a `docker-compose.yml` file anywhere on your target server and paste the following configuration:
+
+```yaml
+version: '3.8'
+
+services:
+  linux-admin-assistant:
+    image: <your-dockerhub-username>/rsc-linux-assistant:latest
+    container_name: rsc-linux-assistant
+    restart: unless-stopped
+    environment:
+      - BotApiKey=YOUR-BOT-API-KEY
+      - ProxyEnable=false
+      - ProxyIP=127.0.0.1
+      - ProxyPort=9050
+      - AdminGroupId=YOUR-ADMIN-GROUP-ID
+      - ServerBaseFolder=/server/base/
+      - ServerBackupFolder=/server/base/backups
+    # volumes:
+    #  - /:/host_root:rw # Optional: Mount host root to allow the bot to manage the host system files.
+```
+
+To start the bot, run:
+```bash
+docker-compose up -d
 ```
 
 ---
