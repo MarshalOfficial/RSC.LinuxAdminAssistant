@@ -254,7 +254,14 @@ namespace RSC.LinuxAdminAssistant
 
                                 var wgetProcess = new Process();
                                 wgetProcess.StartInfo.FileName = "wget";
-                                wgetProcess.StartInfo.Arguments = $"--execute=\"robots=off\" --page-requisites --convert-links --adjust-extension --no-parent -P \"{tempWebDir}\" \"{url}\"";
+                                wgetProcess.StartInfo.ArgumentList.Add("--execute=robots=off");
+                                wgetProcess.StartInfo.ArgumentList.Add("--page-requisites");
+                                wgetProcess.StartInfo.ArgumentList.Add("--convert-links");
+                                wgetProcess.StartInfo.ArgumentList.Add("--adjust-extension");
+                                wgetProcess.StartInfo.ArgumentList.Add("--no-parent");
+                                wgetProcess.StartInfo.ArgumentList.Add("-P");
+                                wgetProcess.StartInfo.ArgumentList.Add(tempWebDir);
+                                wgetProcess.StartInfo.ArgumentList.Add(url);
                                 wgetProcess.StartInfo.UseShellExecute = false;
                                 wgetProcess.StartInfo.CreateNoWindow = true;
                                 wgetProcess.Start();
