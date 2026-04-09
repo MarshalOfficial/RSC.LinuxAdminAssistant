@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using MihaZupan;
 using RSC.LinuxAdminAssistant;
 using Telegram.Bot;
@@ -47,7 +47,7 @@ botClient.StartReceiving(
 
 var me = await botClient.GetMe();
 Console.WriteLine($"Start listening for @{me.Username}");
-Console.ReadLine();
+await Task.Delay(-1);
 
 cts.Cancel();
 
